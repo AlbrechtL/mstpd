@@ -83,6 +83,11 @@ static bridge_t * find_br(int if_index)
     return NULL;
 }
 
+bridge_t *bridge_find(int if_index)
+{
+    return find_br(if_index);
+}
+
 static port_t * create_if(bridge_t * br, int if_index)
 {
     port_t *prt;
@@ -128,6 +133,11 @@ static port_t * find_if(bridge_t * br, int if_index)
             return prt;
     }
     return NULL;
+}
+
+port_t *port_find(bridge_t *br, int if_index)
+{
+    return find_if(br, if_index);
 }
 
 static inline void delete_if(port_t *prt)

@@ -22,6 +22,7 @@ enum worker_event_type {
 	WORKER_EV_BRIDGE_EVENT,
 	WORKER_EV_BRIDGE_ADD,
 	WORKER_EV_BRIDGE_REMOVE,
+	WORKER_EV_PORT_CONFIG,
 	WORKER_EV_ONE_SECOND,
 };
 
@@ -29,7 +30,9 @@ struct worker_event {
 	enum worker_event_type type;
 
 	int bridge_idx;
+	int port_idx;
 	CIST_BridgeConfig bridge_config;
+	CIST_PortConfig port_config;
 };
 
 int worker_init(void);

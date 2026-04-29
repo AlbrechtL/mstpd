@@ -120,6 +120,24 @@ The `--enable-ubus` build requires development packages for `libubus` and
 `libubox`. If they are not available, `configure` will fail with a clear
 dependency error.
 
+When built with `--enable-ubus`, the daemon exposes an `ustp` ubus object.
+Mutating methods return an explicit success reply:
+
+  { "ok": 1 }
+
+Supported methods include:
+
+  - `add_bridge`: register bridge configuration
+  - `bridge_state`: enable or disable STP on a bridge
+  - `set_port_config`: set `admin_edge_port` and/or `auto_edge_port` on a port
+  - `get_port_status`: read `admin_edge_port`, `auto_edge_port`, and
+    `oper_edge_port` on a port
+
+Example calls:
+
+  ubus call ustp set_port_config '{"bridge":"br0","port":"eth0","admin_edge_port":true}'
+  ubus call ustp get_port_status '{"bridge":"br0","port":"eth0"}'
+
 MSTPD is currently packaged for the following distributions:
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/mstpd.svg)](https://repology.org/project/mstpd/versions)

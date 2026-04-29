@@ -7,7 +7,7 @@ mstpd_SOURCES = \
 	bridge_track.c bridge_track.h driver.h bridge_ctl.h libnetlink.c \
 	libnetlink.h mstp.c mstp.h packet.c packet.h netif_utils.c \
 	netif_utils.h ctl_socket_server.c ctl_socket_server.h hmac_md5.c \
-	list.h log.h driver_deps.c
+	list.h log.h driver_deps.c worker.c worker.h
 
 mstpd_LDADD =
 
