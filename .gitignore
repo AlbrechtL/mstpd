@@ -27,6 +27,7 @@ config.h.in
 config.h.in~
 config.sub
 configure
+configure~
 depcomp
 install-sh
 ltmain.sh

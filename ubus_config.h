@@ -11,11 +11,22 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
-#ifndef __UBUS_H
-#define __UBUS_H
+#ifndef __UBUS_CONFIG_H
+#define __UBUS_CONFIG_H
 
-int ustp_ubus_init(void);
-void ustp_ubus_exit(void);
-void ustp_ubus_one_second(void);
+#include <libubox/avl.h>
+#include <stdint.h>
+#include "mstp.h"
+
+extern struct avl_tree bridge_config;
+
+struct bridge_config {
+	struct avl_node node;
+	uint32_t timestamp;
+	CIST_BridgeConfig config;
+};
+
+struct bridge_config *bridge_config_get(const char *name, bool create);
+void bridge_config_expire(void);
 
 #endif

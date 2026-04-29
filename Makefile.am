@@ -9,6 +9,8 @@ mstpd_SOURCES = \
 	netif_utils.h ctl_socket_server.c ctl_socket_server.h hmac_md5.c \
 	list.h log.h driver_deps.c
 
+mstpd_LDADD =
+
 mstpctl_SOURCES = \
 	ctl_main.c ctl_socket_client.c ctl_socket_client.h ctl_functions.h
 
@@ -19,6 +21,12 @@ if ENABLE_DEVEL
   mstpd_CFLAGS += -g3 -O0 -Werror
 endif
 mstpctl_CFLAGS = $(mstpd_CFLAGS)
+
+if ENABLE_UBUS
+mstpd_SOURCES += ubus_config.c ubus_config.h ubus.c ubus.h
+mstpd_CFLAGS += $(UBUS_CFLAGS)
+mstpd_LDADD += $(UBUS_LIBS)
+endif
 
 EXTRA_DIST = bridge-stp.in utils/ifupdown.sh.in utils/mstp_config_bridge.in \
 	utils/mstpd.service.in utils/bash_completion utils/nm-dispatcher.in \

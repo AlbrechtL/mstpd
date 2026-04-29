@@ -14,8 +14,8 @@
  *
  * - kazutomo@mcs.anl.gov
  */
-#ifndef _LINUX_LIST_H
-#define _LINUX_LIST_H
+#ifndef _LINUX_LIST_H_
+#define _LINUX_LIST_H_
 
 /**
  * @name from other kernel headers

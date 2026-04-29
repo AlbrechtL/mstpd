@@ -1,32 +1,76 @@
-/*
- * ustp - OpenWrt STP/RSTP/MSTP daemon
- * Copyright (C) 2021 Felix Fietkau <nbd@nbd.name>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2
- * as published by the Free Software Foundation
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- */
-#ifndef __CONFIG_H
-#define __CONFIG_H
+/* config.h.  Generated from config.h.in by configure.  */
+/* config.h.in.  Generated from configure.ac by autoheader.  */
 
-#include <libubox/avl.h>
-#include <stdint.h>
-#include "mstp.h"
+/* Define to 1 when ubus integration is enabled */
+/* #undef ENABLE_UBUS */
 
-extern struct avl_tree bridge_config;
+/* Define to 1 if you have the 'clock_gettime' function. */
+#define HAVE_CLOCK_GETTIME 1
 
-struct bridge_config {
-	struct avl_node node;
-	uint32_t timestamp;
-	CIST_BridgeConfig config;
-};
+/* Define to 1 if you have the <dlfcn.h> header file. */
+#define HAVE_DLFCN_H 1
 
-struct bridge_config *bridge_config_get(const char *name, bool create);
-void bridge_config_expire(void);
+/* Define to 1 if you have the <inttypes.h> header file. */
+#define HAVE_INTTYPES_H 1
 
-#endif
+/* Define to 1 if you have the <stdint.h> header file. */
+#define HAVE_STDINT_H 1
+
+/* Define to 1 if you have the <stdio.h> header file. */
+#define HAVE_STDIO_H 1
+
+/* Define to 1 if you have the <stdlib.h> header file. */
+#define HAVE_STDLIB_H 1
+
+/* Define to 1 if you have the <strings.h> header file. */
+#define HAVE_STRINGS_H 1
+
+/* Define to 1 if you have the <string.h> header file. */
+#define HAVE_STRING_H 1
+
+/* Define to 1 if the system has the type 'struct timespec'. */
+#define HAVE_STRUCT_TIMESPEC 1
+
+/* Define to 1 if you have the <sys/stat.h> header file. */
+#define HAVE_SYS_STAT_H 1
+
+/* Define to 1 if you have the <sys/types.h> header file. */
+#define HAVE_SYS_TYPES_H 1
+
+/* Define to 1 if you have the <unistd.h> header file. */
+#define HAVE_UNISTD_H 1
+
+/* Define to the sub-directory where libtool stores uninstalled libraries. */
+#define LT_OBJDIR ".libs/"
+
+/* Name of package */
+#define PACKAGE "mstpd"
+
+/* Define to the address where bug reports for this package should be sent. */
+#define PACKAGE_BUGREPORT "https://github.com/mstpd/mstpd"
+
+/* Build revision obtained from git */
+#define PACKAGE_BUILD "8d6472d"
+
+/* Define to the full name of this package. */
+#define PACKAGE_NAME "mstpd"
+
+/* Define to the full name and version of this package. */
+#define PACKAGE_STRING "mstpd 0.2.0"
+
+/* Define to the one symbol short name of this package. */
+#define PACKAGE_TARNAME "mstpd"
+
+/* Define to the home page for this package. */
+#define PACKAGE_URL ""
+
+/* Package version, including build number */
+#define PACKAGE_VERSION "0.2.0-8d6472d"
+
+/* Define to 1 if all of the C89 standard headers exist (not just the ones
+   required in a freestanding environment). This macro is provided for
+   backward compatibility; new code need not use it. */
+#define STDC_HEADERS 1
+
+/* Version number of package */
+#define VERSION "0.2.0"

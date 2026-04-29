@@ -99,6 +99,27 @@ hardware.
 Packaging
 ---------
 
+Building
+--------
+
+The supported build system is autotools.
+
+Default build:
+
+  ./autogen.sh
+  ./configure
+  make
+
+Optional ubus integration can be enabled explicitly:
+
+  ./autogen.sh
+  ./configure --enable-ubus
+  make
+
+The `--enable-ubus` build requires development packages for `libubus` and
+`libubox`. If they are not available, `configure` will fail with a clear
+dependency error.
+
 MSTPD is currently packaged for the following distributions:
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/mstpd.svg)](https://repology.org/project/mstpd/versions)

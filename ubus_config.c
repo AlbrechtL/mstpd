@@ -16,7 +16,7 @@
 #include <libubox/avl-cmp.h>
 #include <libubox/utils.h>
 
-#include "config.h"
+#include "ubus_config.h"
 
 AVL_TREE(bridge_config, avl_strcmp, false, NULL);
 

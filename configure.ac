@@ -49,6 +49,17 @@ AC_ARG_ENABLE([devel],
 
 AM_CONDITIONAL([ENABLE_DEVEL], [test "x$enable_devel" = "xyes"])
 
+AC_ARG_ENABLE([ubus],
+     [AC_HELP_STRING([--enable-ubus], [enable ubus integration])],,
+     [enable_ubus=no])
+
+AM_CONDITIONAL([ENABLE_UBUS], [test "x$enable_ubus" = "xyes"])
+
+AS_IF([test "x$enable_ubus" = "xyes"], [
+     PKG_CHECK_MODULES([UBUS], [libubus libubox])
+     AC_DEFINE([ENABLE_UBUS], [1], [Define to 1 when ubus integration is enabled])
+])
+
 AC_ARG_ENABLE([install-ifupdown-scripts],
 	[AC_HELP_STRING([--enable-install-ifupdown-scripts], [enable installation of ifupdown scripts])])
 

@@ -15,9 +15,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include <libubox/uloop.h>
-#include <libubox/utils.h>
-
 #include "worker.h"
 #include "bridge_ctl.h"
 #include "bridge_track.h"
@@ -27,7 +24,6 @@ static pthread_t w_thread;
 static pthread_mutex_t w_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t w_cond = PTHREAD_COND_INITIALIZER;
 static LIST_HEAD(w_queue);
-static struct uloop_timeout w_timer;
 
 struct worker_queued_event {
 	struct list_head list;
@@ -92,21 +88,8 @@ static void *worker_thread_fn(void *arg)
 	return NULL;
 }
 
-static void worker_timer_cb(struct uloop_timeout *t)
-{
-	struct worker_event ev = {
-		.type = WORKER_EV_ONE_SECOND,
-	};
-
-	uloop_timeout_set(t, 1000);
-	worker_queue_event(&ev);
-}
-
 int worker_init(void)
 {
-	w_timer.cb = worker_timer_cb;
-	uloop_timeout_set(&w_timer, 1000);
-
 	return pthread_create(&w_thread, NULL, worker_thread_fn, NULL);
 }
 

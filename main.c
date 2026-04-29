@@ -45,6 +45,11 @@
 #include "driver.h"
 #include "bridge_track.h"
 
+#ifdef ENABLE_UBUS
+#include "ubus.h"
+#include "worker.h"
+#endif
+
 #define APP_NAME    "mstpd"
 
 static int print_to_syslog = 0;
@@ -116,6 +121,9 @@ int main(int argc, char *argv[])
 {
     int c;
     int daemonize = 1;
+#ifdef ENABLE_UBUS
+    bool ubus_started = false;
+#endif
 
     while((c = getopt(argc, argv, "Vdsv:")) != -1)
     {
@@ -185,7 +193,22 @@ int main(int argc, char *argv[])
     TST(netsock_init() == 0, -1);
     TST(init_bridge_ops() == 0, -1);
 
+#ifdef ENABLE_UBUS
+    if(ustp_ubus_init() != 0)
+    {
+        ERROR("Couldn't initialize ubus integration");
+        return -1;
+    }
+    ubus_started = true;
+#endif
+
     c = epoll_main_loop(&quit);
+
+#ifdef ENABLE_UBUS
+    if(ubus_started)
+        ustp_ubus_exit();
+#endif
+
     bridge_track_fini();
     ctl_socket_cleanup();
     driver_mstp_fini();

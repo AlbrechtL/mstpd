@@ -11,12 +11,15 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+#include <stdbool.h>
+
 #include <libubus.h>
-#include <libubox/uloop.h>
-#include "config.h"
+
+#include "epoll_loop.h"
+#include "ubus_config.h"
 #include "mstp.h"
-#include "worker.h"
 #include "ubus.h"
+#include "bridge_track.h"
 
 struct blob_buf b;
 
@@ -121,7 +124,7 @@ ubus_bridge_state(struct ubus_context *ctx, struct ubus_object *obj,
 	struct blob_attr *tb[__BRIDGE_STATE_MAX];
 	struct bridge_config *cfg;
 	const char *bridge_name;
-	struct worker_event ev = {};
+	int bridge_idx;
 
 	blobmsg_parse(bridge_state_policy, __BRIDGE_STATE_MAX, tb,
 		      blobmsg_data(msg), blobmsg_len(msg));
@@ -130,8 +133,8 @@ ubus_bridge_state(struct ubus_context *ctx, struct ubus_object *obj,
 		return UBUS_STATUS_INVALID_ARGUMENT;
 
 	bridge_name = blobmsg_get_string(tb[BRIDGE_STATE_NAME]);
-	ev.bridge_idx = if_nametoindex(bridge_name);
-	if (!ev.bridge_idx)
+	bridge_idx = if_nametoindex(bridge_name);
+	if (!bridge_idx)
 		return UBUS_STATUS_NOT_FOUND;
 
 	if (blobmsg_get_bool(tb[BRIDGE_STATE_ENABLED])) {
@@ -139,13 +142,11 @@ ubus_bridge_state(struct ubus_context *ctx, struct ubus_object *obj,
 		if (!cfg)
 			return UBUS_STATUS_NOT_FOUND;
 
-		ev.type = WORKER_EV_BRIDGE_ADD;
-		ev.bridge_config = cfg->config;
+		if (bridge_create(bridge_idx, &cfg->config) != 0)
+			return UBUS_STATUS_INVALID_ARGUMENT;
 	} else {
-		ev.type = WORKER_EV_BRIDGE_REMOVE;
+		bridge_delete(bridge_idx);
 	}
-
-	worker_queue_event(&ev);
 
 	return 0;
 }
@@ -178,61 +179,139 @@ netifd_device_cb(struct ubus_context *ctx, struct ubus_object *obj,
 	return 0;
 }
 
-static struct ubus_auto_conn conn;
-static struct ubus_subscriber netifd_sub;
+static struct ubus_subscriber netifd_sub = {
+	.cb = netifd_device_cb,
+	.remove_cb = NULL,
+};
 
-static void netifd_sub_cb(struct uloop_timeout *t)
+/* ubus context and event handler for epoll integration */
+static struct ubus_context *ubus_ctx;
+static struct epoll_event_handler ubus_handler;
+
+/* Reconnect and subscription retry state */
+static int ubus_reconnect_retry;
+static int netifd_subscribe_retry;
+
+static void
+ubus_on_readable(uint32_t events, struct epoll_event_handler *h)
+{
+	if (!ubus_ctx)
+		return;
+
+	ubus_handle_event(ubus_ctx);
+}
+
+static int
+ubus_try_reconnect(void)
+{
+	if (!ubus_ctx)
+		return -1;
+
+	if (ubus_reconnect(ubus_ctx, NULL) != 0)
+		return -1;
+
+	/* Reconnected, re-register objects and subscribers */
+	ubus_add_object(ubus_ctx, &ustp_object);
+	ubus_register_subscriber(ubus_ctx, &netifd_sub);
+
+	/* Reset netifd subscription retry to immediately attempt subscription */
+	netifd_subscribe_retry = 1;
+
+	return 0;
+}
+
+static int
+ubus_try_subscribe_netifd(void)
 {
 	uint32_t id;
 
-	if (ubus_lookup_id(&conn.ctx, "network.device", &id) != 0 ||
-	    ubus_subscribe(&conn.ctx, &netifd_sub, id) != 0) {
-		uloop_timeout_set(t, 1000);
-		return;
+	if (!ubus_ctx || ubus_ctx->sock.fd < 0)
+		return -1;
+
+	if (ubus_lookup_id(ubus_ctx, "network.device", &id) != 0)
+		return -1;
+
+	if (ubus_subscribe(ubus_ctx, &netifd_sub, id) != 0)
+		return -1;
+
+	/* Success: invoke stp_init to get existing bridge configs */
+	blob_buf_init(&b, 0);
+	ubus_invoke(ubus_ctx, id, "stp_init", b.head, NULL, NULL, 1000);
+
+	netifd_subscribe_retry = 0;
+
+	return 0;
+}
+
+int ustp_ubus_init(void)
+{
+	/* Create ubus context */
+	ubus_ctx = ubus_connect(NULL);
+	if (!ubus_ctx)
+		return -1;
+
+	/* Register object and subscriber */
+	ubus_add_object(ubus_ctx, &ustp_object);
+	ubus_register_subscriber(ubus_ctx, &netifd_sub);
+
+	/* Register ubus socket FD with epoll for readability */
+	ubus_handler.fd = ubus_ctx->sock.fd;
+	ubus_handler.handler = ubus_on_readable;
+	if (add_epoll(&ubus_handler) != 0) {
+		ubus_free(ubus_ctx);
+		ubus_ctx = NULL;
+		return -1;
 	}
 
-	blob_buf_init(&b, 0);
-	ubus_invoke(&conn.ctx, id, "stp_init", b.head, NULL, NULL, 1000);
-}
+	/* Initialize retry state */
+	ubus_reconnect_retry = 0;
+	netifd_subscribe_retry = 1;
 
-static struct uloop_timeout netifd_sub_timer = {
-	.cb = netifd_sub_cb,
-};
+	/* Attempt initial netifd subscription */
+	ubus_try_subscribe_netifd();
 
-static void
-netifd_device_remove_cb(struct ubus_context *ctx,
-			struct ubus_subscriber *obj, uint32_t id)
-{
-	uloop_timeout_set(&netifd_sub_timer, 1000);
-}
-
-static struct ubus_subscriber netifd_sub = {
-	.cb = netifd_device_cb,
-	.remove_cb = netifd_device_remove_cb,
-};
-
-static void
-ubus_connect_handler(struct ubus_context *ctx)
-{
-	ubus_add_object(ctx, &ustp_object);
-	ubus_register_subscriber(ctx, &netifd_sub);
-	uloop_timeout_set(&netifd_sub_timer, 1);
-}
-
-void ustp_ubus_init(void)
-{
-	conn.cb = ubus_connect_handler;
-	ubus_auto_connect(&conn);
+	return 0;
 }
 
 void ustp_ubus_exit(void)
 {
-	uint32_t id;
+	if (!ubus_ctx)
+		return;
 
-	ubus_remove_object(&conn.ctx, &ustp_object);
-	ubus_unregister_subscriber(&conn.ctx, &netifd_sub);
-	blob_buf_init(&b, 0);
-	if (ubus_lookup_id(&conn.ctx, "network.device", &id) == 0)
-		ubus_invoke(&conn.ctx, id, "stp_init", b.head, NULL, NULL, 1000);
-	ubus_auto_shutdown(&conn);
+	/* Remove from epoll */
+	remove_epoll(&ubus_handler);
+
+	/* Clean up ubus context */
+	ubus_shutdown(ubus_ctx);
+	ubus_free(ubus_ctx);
+	ubus_ctx = NULL;
+	ubus_reconnect_retry = 0;
+	netifd_subscribe_retry = 0;
+}
+
+void ustp_ubus_one_second(void)
+{
+	if (!ubus_ctx)
+		return;
+
+	/* Try reconnect if disconnected */
+	if (ubus_ctx->sock.fd < 0) {
+		ubus_reconnect_retry++;
+		if (ubus_reconnect_retry >= 1) {
+			if (ubus_try_reconnect() == 0)
+				ubus_reconnect_retry = 0;
+		}
+		return;
+	}
+
+	/* Try netifd subscription if not yet subscribed */
+	if (netifd_subscribe_retry) {
+		netifd_subscribe_retry++;
+		if (netifd_subscribe_retry >= 1) {
+			ubus_try_subscribe_netifd();
+		}
+	}
+
+	/* Expire old bridge config entries */
+	bridge_config_expire();
 }

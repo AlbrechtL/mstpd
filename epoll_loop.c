@@ -35,6 +35,10 @@
 #include "bridge_ctl.h"
 #include "clock_gettime.h"
 
+#ifdef ENABLE_UBUS
+#include "ubus.h"
+#endif
+
 /* globals */
 static int epoll_fd = -1;
 static struct timespec nexttimeout;
@@ -99,6 +103,9 @@ static inline int time_diff(struct timespec *second, struct timespec *first)
 static inline void run_timeouts(void)
 {
     bridge_one_second();
+#ifdef ENABLE_UBUS
+    ustp_ubus_one_second();
+#endif
     ++(nexttimeout.tv_sec);
 }
 
