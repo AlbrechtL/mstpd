@@ -12,6 +12,8 @@ mstpd_SOURCES = \
 mstpctl_SOURCES = \
 	ctl_main.c ctl_socket_client.c ctl_socket_client.h ctl_functions.h
 
+mstpctl_LDADD =
+
 mstpd_CFLAGS = \
 	-Os -Wall -D_REENTRANT -D__LINUX__ -I. \
 	-D_GNU_SOURCE
@@ -19,6 +21,12 @@ if ENABLE_DEVEL
   mstpd_CFLAGS += -g3 -O0 -Werror
 endif
 mstpctl_CFLAGS = $(mstpd_CFLAGS)
+
+if ENABLE_UBUS
+mstpctl_SOURCES += ubus_config.c ubus_config.h ubus.c ubus.h ubus_ctl.c ubus_ctl.h
+mstpctl_CFLAGS += $(LIBUBUS_CFLAGS)
+mstpctl_LDADD += $(LIBUBUS_LIBS)
+endif
 
 EXTRA_DIST = bridge-stp.in utils/ifupdown.sh.in utils/mstp_config_bridge.in \
 	utils/mstpd.service.in utils/bash_completion utils/nm-dispatcher.in \

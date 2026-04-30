@@ -30,9 +30,14 @@
 #include <errno.h>
 #include <limits.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "ctl_socket_client.h"
 #include "log.h"
+
+#ifdef HAVE_UBUS
+#include "ubus.h"
+#endif
 
 static int get_index_die(const char *ifname, const char *doc, bool die)
 {
@@ -2338,6 +2343,7 @@ static void help(void)
     printf("  -i | --ignore            Ignore failing commands during batch\n");
     printf("                           processing\n");
     printf("  -f | --format <format>   Select output format (json, plain)\n");
+    printf("  -D | --daemon            Run as ubus daemon (requires --enable-ubus build)\n");
     printf("commands:\n");
     command_helpall();
 }
@@ -2476,13 +2482,15 @@ int main(int argc, char *const *argv)
         {.name = "stdin",   .val = 's'},
         {.name = "ignore",  .val = 'i'},
         {.name = "format",  .val = 'f', .has_arg = 1},
+        {.name = "daemon",  .val = 'D'},
         {0}
     };
     FILE *batch_file = NULL;
     bool is_stdin = false;
     bool ignore = false;
+    bool daemon_mode = false;
 
-    while(EOF != (f = getopt_long(argc, argv, "Vhf:b:is", options, NULL)))
+    while(EOF != (f = getopt_long(argc, argv, "Vhf:b:isD", options, NULL)))
         switch(f)
         {
             case 'h':
@@ -2528,13 +2536,55 @@ int main(int argc, char *const *argv)
                     goto help;
                 }
                 break;
+            case 'D':
+                daemon_mode = true;
+                break;
             default:
                 fprintf(stderr, "Unknown option '%c'\n", f);
                 goto help;
         }
 
-    if((argc == optind) && !batch_file)
+    if((argc == optind) && !batch_file && !daemon_mode)
         goto help;
+
+    if(daemon_mode && (batch_file || (argc != optind)))
+    {
+        fprintf(stderr, "Daemon mode cannot be combined with commands or batch input\n");
+        goto help;
+    }
+
+    if(daemon_mode)
+    {
+#ifndef HAVE_UBUS
+        fprintf(stderr, "This mstpctl build has no ubus support. Rebuild with --enable-ubus\n");
+        return 1;
+#else
+        if(daemon(0, 0) != 0)
+        {
+            fprintf(stderr, "failed to daemonize mstpctl\n");
+            return 1;
+        }
+
+        if(ctl_client_init())
+        {
+            fprintf(stderr, "can't setup control connection\n");
+            return 1;
+        }
+
+        if(ustp_ubus_init() != 0)
+        {
+            fprintf(stderr, "can't initialize ubus daemon\n");
+            ctl_client_cleanup();
+            return 1;
+        }
+
+        rc = ustp_ubus_run();
+        ustp_ubus_exit();
+        ctl_client_cleanup();
+
+        return (rc == 0) ? 0 : 1;
+#endif
+    }
 
     if(ctl_client_init())
     {
