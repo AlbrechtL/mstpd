@@ -2344,6 +2344,7 @@ static void help(void)
     printf("                           processing\n");
     printf("  -f | --format <format>   Select output format (json, plain)\n");
     printf("  -D | --daemon            Run as ubus daemon (requires --enable-ubus build)\n");
+    printf("  -G | --foreground        Keep ubus daemon in foreground (use with --daemon)\n");
     printf("commands:\n");
     command_helpall();
 }
@@ -2483,14 +2484,16 @@ int main(int argc, char *const *argv)
         {.name = "ignore",  .val = 'i'},
         {.name = "format",  .val = 'f', .has_arg = 1},
         {.name = "daemon",  .val = 'D'},
+        {.name = "foreground", .val = 'G'},
         {0}
     };
     FILE *batch_file = NULL;
     bool is_stdin = false;
     bool ignore = false;
     bool daemon_mode = false;
+    bool foreground_mode = false;
 
-    while(EOF != (f = getopt_long(argc, argv, "Vhf:b:isD", options, NULL)))
+    while(EOF != (f = getopt_long(argc, argv, "Vhf:b:isDG", options, NULL)))
         switch(f)
         {
             case 'h':
@@ -2539,6 +2542,9 @@ int main(int argc, char *const *argv)
             case 'D':
                 daemon_mode = true;
                 break;
+            case 'G':
+                foreground_mode = true;
+                break;
             default:
                 fprintf(stderr, "Unknown option '%c'\n", f);
                 goto help;
@@ -2559,7 +2565,13 @@ int main(int argc, char *const *argv)
         fprintf(stderr, "This mstpctl build has no ubus support. Rebuild with --enable-ubus\n");
         return 1;
 #else
-        if(daemon(0, 0) != 0)
+        if(foreground_mode && !daemon_mode)
+        {
+            fprintf(stderr, "Foreground mode requires daemon mode\n");
+            return 1;
+        }
+
+        if(!foreground_mode && daemon(0, 0) != 0)
         {
             fprintf(stderr, "failed to daemonize mstpctl\n");
             return 1;

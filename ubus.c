@@ -93,6 +93,22 @@ static bool ubus_set_bridge_config(struct blob_attr *attr)
                                         has_ageing_time, ageing_time) == 0;
 }
 
+static const char *ubus_get_bridge_name(struct blob_attr *attr)
+{
+    static struct blob_attr *tb[__BRIDGE_CONFIG_MAX];
+
+    if(!attr)
+        return NULL;
+
+    blobmsg_parse(bridge_config_policy, __BRIDGE_CONFIG_MAX, tb,
+                  blobmsg_data(attr), blobmsg_len(attr));
+
+    if(!tb[BRIDGE_CONFIG_NAME])
+        return NULL;
+
+    return blobmsg_get_string(tb[BRIDGE_CONFIG_NAME]);
+}
+
 static void ubus_send_ok(struct ubus_context *ctx,
                          struct ubus_request_data *req)
 {
@@ -226,10 +242,19 @@ static int netifd_device_cb(struct ubus_context *ctx, struct ubus_object *obj,
                             struct ubus_request_data *req,
                             const char *method, struct blob_attr *msg)
 {
+    const char *bridge_name;
+
     if(strcmp(method, "stp_init") != 0)
         return 0;
 
-    ubus_set_bridge_config(msg);
+    bridge_name = ubus_get_bridge_name(msg);
+    if(!bridge_name)
+        return 0;
+
+    if(!ubus_set_bridge_config(msg))
+        return 0;
+
+    ubus_ctl_set_bridge_state(bridge_name, true);
     return 0;
 }
 
