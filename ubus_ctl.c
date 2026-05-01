@@ -12,6 +12,7 @@
 #include <net/if.h>
 
 #include "ctl_functions.h"
+#include "log.h"
 #include "mstp.h"
 #include "ubus_ctl.h"
 
@@ -120,8 +121,17 @@ int ubus_ctl_store_bridge_config(const char *name,
 
     if(has_hello_time)
     {
-        bc->bridge_hello_time = hello_time;
-        bc->set_bridge_hello_time = true;
+        /* The current MSTP core only accepts bridge hello time == 2. */
+        if(hello_time == 2)
+        {
+            bc->bridge_hello_time = hello_time;
+            bc->set_bridge_hello_time = true;
+        }
+        else
+        {
+            LOG("Ignore unsupported hello_time=%u for bridge %s (must be 2)",
+                hello_time, name);
+        }
     }
 
     if(has_max_age)

@@ -254,7 +254,11 @@ static int netifd_device_cb(struct ubus_context *ctx, struct ubus_object *obj,
     if(!ubus_set_bridge_config(msg))
         return 0;
 
-    ubus_ctl_set_bridge_state(bridge_name, true);
+    /*
+     * Keep stp_init side-effect free (like ustp): only cache bridge config.
+     * The actual enable/disable transition is handled by explicit
+     * ustp.bridge_state calls from netifd.
+     */
     return 0;
 }
 

@@ -58,6 +58,7 @@ volatile bool quit = false;
 
 static void handle_signal(int sig)
 {
+    INFO("Received signal %d, shutting down", sig);
     quit = true;
 }
 
@@ -75,8 +76,11 @@ int signal_init(void)
 
     sigaction(SIGTERM, &sa, NULL);
     sigaction(SIGINT, &sa, NULL);
-    sigaction(SIGHUP, &sa, NULL);
     sigaction(SIGUSR2, &sa, NULL);
+
+    /* Ignore terminal hangups to avoid accidental shutdown of mstpd. */
+    sa.sa_handler = SIG_IGN;
+    sigaction(SIGHUP, &sa, NULL);
 
     sa.sa_handler = handle_sigusr1;
     sigaction(SIGUSR1, &sa, NULL);
